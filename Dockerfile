@@ -12,12 +12,6 @@ COPY . .
 
 RUN pip install --editable .
 
-ARG color
-ARG bot_id
-ARG game_id
+CMD ["python", "run.py"]
 
-ENV COLOR_BOT=${color} \
-    GAME_ID=${game_id} \
-    ID_BOT=${bot_id}
 
-CMD python run.py

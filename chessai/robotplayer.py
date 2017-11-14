@@ -12,13 +12,9 @@ class RobotPlayer(object):
         self._bot_id = bot_id
         self._iswhite = iswhite
         self._game_id = game_id
+        self.redis_conn = redis.from_url("redis://:devpassword@redis:6379/2")
 
 
-    def start(self):
-        if self._iswhite:
-            print('subscribing to the game_id redis pubsub')
-            while True:
-                print('looking at redis')
-                redis.set('foo', 'bar')
-                print(redis.get('foo'))
-                sleep(1)
+    def run(self):
+        print("Game is running")
+        print(self._bot_id, self._iswhite, self._game_id)            
