@@ -1,6 +1,7 @@
 FROM python:3
 MAINTAINER Augustin Barbe <augustin.barbe@gmail.com>
 
+RUN apt-get update; apt-get install -qy stockfish
 ENV INSTALL_PATH /chess-ai
 RUN mkdir ${INSTALL_PATH}
 WORKDIR ${INSTALL_PATH}

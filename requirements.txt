@@ -1,2 +1,3 @@
 redis
 gunicorn
+python-chess
