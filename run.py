@@ -11,11 +11,5 @@ from chessai.ressources import RobotPlayerException
 
 if __name__ == "__main__":
 
-    config = configparser.ConfigParser()
-    config.read('chessai.cfg')
-
-    redis_conn = redis.from_url("redis://:devpassword@redis:6379/2")
-   
     robot = RobotPlayer()
-    robot.start()
-    robot.run()
+    robot.play()

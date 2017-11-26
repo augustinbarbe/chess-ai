@@ -1,67 +1,79 @@
 """ AI application chess wrapper"""
 
 import configparser
+import secrets
 from time import sleep
 import os
+import redis
+import sys
+import time
+
 from chess import uci, Board, Move
 
-from chessai.ressources import config
-import redis
+from chessai.ressources import config, generate_id
+
 
 class RobotPlayer(object):
     """ Class wrapping the chess engine """
     def __init__(self):
-        self._color = os.environ.get('COLOR') == "white"
-        
-        if self._color:
-            self._bot_id = os.environ.get('WHITE_ID')
-            self._opponent_id = os.environ.get('BLACK_ID')
-        else:
-            self._opponent_id = os.environ.get('WHITE_ID')
-            self._bot_id = os.environ.get('BLACK_ID')
-
+        self._color = os.environ.get('COLOR') == "white"   
         self._game_id = os.environ.get('GAME_ID')
+        self.bot_id = secrets.token_hex(nbytes=16)
+        
+        #TODO : connect from config file
         self._red = redis.StrictRedis(host='redis', db=3, port=6379, password='devpassword')
-
-
         self._engine = uci.popen_engine("/usr/games/stockfish")
         self._board = Board()
 
-        print("init done: ", self._bot_id, self._opponent_id, self._color)
-        print("color ", self._color)
 
-    def start(self):
-        """Start the player """
+    def init_game(self):
+        """set everything up for gaming"""
         self._engine.uci()
         self._engine.ucinewgame()
         self._engine.position(self._board)
-
-        self.run()
+        self.own_id = generate_id(self._color, self._game_id)
+        self.opp_id = generate_id(not self._color, self._game_id)
 
 
     def run(self):
         """continuous game """
         pubsub = self._red.pubsub()
-        pubsub.subscribe([self._opponent_id])
-        
+        pubsub.subscribe([self.opp_id])
 
+        self.info("Entering in the pubsub")
         for move in pubsub.listen():
-            if move['type'] == 'subscribe' and move['data'] == 1:
-                print('subscription done!')
-
-                if self._color:
-                    """First move for the white"""
-                    decision, _ = self._engine.go(movetime=2000)
-                    self._red.publish(self._bot_id, decision.uci())
-                    self._board.push(decision)
-                    print(self._board)
+            self.info("Incoming message")
             
+            if move['type'] == 'subscribe' and move['data'] == 1:
+                self.info("Init message")
+                if self._color:
+                    while not self._red.get(self._game_id):
+                        self.info("Waiting for black")
+
+                    self.info("Black is connected, playing first move")
+
+                    decision, _ = self._engine.go(movetime=2000)
+                    self._red.publish(self.own_id, decision.uci())
+                    self._board.push(decision)
+                    self.info("Move played")
+
+                else:
+                    self._red.set(self._game_id, "ready")
+                    self.info("Telling white we are ready")
 
             else:
-                print(move['data'])
+                self.info("Receiving move")
                 self._board.push(Move.from_uci(move['data'].decode('utf8')))
                 decision, _ = self._engine.go(movetime=2000)
-                self._red.publish(self._game_id, decision.uci())
+                self._red.publish(self.own_id, decision.uci())
+                self.info("Playing move")
                 self._board.push(decision)
-                print(self._board)
-                return
+
+
+    def info(self, message):
+        """just info"""
+        self._red.publish('info', "[{}][{}]{}".format(time.time(), self._color, message))
+
+    def play(self):
+        self.init_game()
+        self.run()

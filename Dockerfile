@@ -13,6 +13,6 @@ COPY . .
 
 RUN pip install --editable .
 
-CMD ["python", "run.py"]
+CMD ["python", "run.py", ">log.txt"]
 
 
